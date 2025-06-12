@@ -74,11 +74,10 @@ def predict_svm(age_group, gender, country, num=1):
 
     return predicted_category
 
-def predict_dt(travel_group=None, budget=None, accomodation=None, 
-               activity_interest=None, physical_activity_level=None, experience_level=None):
+def predict_dt(travel_group, budget, accomodation, activity_interest, physical_activity_level, experience_level):
     # Load the model
-    model = joblib.load('model.pkl')
-    
+    model = joblib.load('random_forest_model.pkl')
+
     # Create a DataFrame for the input
     input_data = pd.DataFrame({
         'Travel Group': [travel_group],
@@ -88,23 +87,65 @@ def predict_dt(travel_group=None, budget=None, accomodation=None,
         'Physical Activity Level': [physical_activity_level],
         'Experience Level': [experience_level]
     })
-    
-    label_encoders = joblib.load('label_encoder_dt.pkl')
 
-    for column, encoder in label_encoders.items():
-        if column in input_data.columns:
-            # Use .transform() to encode the new data
-            input_data[column] = encoder.fit_transform(input_data[column])
-        else:
-            print(f"Warning: Column '{column}' not found in new data. Skipping encoding for this column.")
+    manual_encoding = {
+    "Travel Group": {
+        'Solo traveler': 0,
+        'Traveling with a friend group': 1,
+        'Traveling with partner': 2,
+        'Traveling with young kids (under 12)': 3,
+        'Traveling with teenagers (12-18)': 4,
+        'Traveling with family (multi-generational)': 5
+    },
+    "Budget": {
+        "Budget/Backpacking": 0,
+        "Mid-range": 1,
+        "Luxury": 2
+    },
+    "Accommodation": {
+        "Hostels & guesthouses": 0,
+        "Budget hotels & Airbnb": 1,
+        "3 - 4 star hotels": 2,
+        "5 - star hotels & luxury resorts": 3
+    },
+    "Activity Interest": {
+        "Adventure seeker (hiking, trekking, extreme sports)": 0,
+        "Nature & wildlife lover (safaris, rainforests)": 1,
+        "Beach & water sports enthusiast (surfing, snorkeling, diving)": 2,
+        "Cultural & history enthusiast (temples, heritage sites)": 3,
+        "Spiritual & religious traveler": 4,
+        "Food & culinary explorer": 5,
+        "Photography & scenic views seeker": 6,
+        "Luxury & relaxation traveler": 7,
+        "Business traveler": 8
+    },
+    "Physical Activity Level": {
+        'Very active (hiking, long walks, adventure sports)': 0,
+        'Moderately active (walking tours, short hikes)': 1,
+        'Less active (prefer easy access locations, relaxation)': 2
+    },
+    "Experience Level": {
+        "First-time traveler": 0,
+        "Have traveled occasionally": 1,
+        "Frequent traveler": 2
+    }
+}
 
-    # Generate prediction using the trained Decision Tree model
+# Loop to encode all columns in input_data
+    for column in input_data.columns:
+        if column in manual_encoding:
+            input_data[column] = input_data[column].map(manual_encoding[column])
+    print(input_data)
     predicted_category_encoded = model.predict(input_data)
-
     # Decode the predicted category back to original words
-    predicted_category = label_encoders['Preferred Destination Category'].inverse_transform(predicted_category_encoded)
+    predicted_category = (lambda x: [
+        "Adventure & Unique Experiences",
+        "Beaches & Coastal Areas",
+        "Historical & Cultural Sites",
+        "Nature & Wildlife",
+    ][x[0]])(predicted_category_encoded)
 
-    return predicted_category[0]  # Return the first element of the array
+    return predicted_category  # Return the decoded category string
 
 if submit:
     st.session_state.recommendation = predict_dt(
